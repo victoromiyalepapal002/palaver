@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { login } from "./actions";
 
 export default function LoginPage() {
-  const [state, action, pending] = useActionState(login, undefined);
+  const [state, action, pending] = useActionState<{ error?: string } | undefined, FormData>(login, undefined);
 
   return (
     <main className="login-wrap">
