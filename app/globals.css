@@ -630,3 +630,31 @@ button { white-space: nowrap; }
   .ring, .orb, .coin, .arena-floor, .ripple, .eq i, .say { animation: none !important; }
   .arena-grid { transition: none; transform: none; }
 }
+
+/* ---------- Clip mode: vertical 9:16 view for screen-recording TikToks / Reels / Shorts ---------- */
+.duel.clip { max-width: min(100vw, calc(100dvh * 9 / 16)); min-height: 100dvh; margin: 0 auto; padding-bottom: 14px; background: var(--bg); }
+.duel.clip .duel-head,
+.duel.clip .voice-note,
+.duel.clip .progress,
+.duel.clip .round-label,
+.duel.clip .summary,
+.duel.clip .exchange-title,
+.duel.clip .exchange,
+.duel.clip .room-foot { display: none; }
+.clip-top { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px 0; }
+.clip-brand { font-family: var(--serif); font-weight: 800; letter-spacing: 0.28em; font-size: 0.78rem; color: var(--gold); }
+.clip-round { font-size: 0.68rem; letter-spacing: 0.18em; font-weight: 700; color: #121110; background: var(--gold); padding: 3px 9px; border-radius: 999px; }
+.duel.clip .duel-q { font-size: clamp(1.45rem, 7vw, 2.2rem); line-height: 1.15; text-align: center; padding: 14px 18px 6px; text-wrap: balance; }
+.duel.clip .say-wrap { flex: 1; justify-content: center; min-height: 0; padding: 10px 14px; }
+.duel.clip .say { max-width: 100%; padding: 16px 18px; }
+.duel.clip .say p { font-size: clamp(1.25rem, 5.6vw, 1.9rem); line-height: 1.35; }
+.duel.clip .say-who { font-size: 1rem; }
+.duel.clip .f-tag { display: none; }
+.duel.clip .duel-controls { padding-top: 6px; opacity: 0.55; }
+.duel.clip .duel-controls:hover, .duel.clip .duel-controls:focus-within { opacity: 1; }
+.clip-end { text-align: center; padding: 6px 16px; animation: clipPop 0.5s ease-out both; }
+.clip-end-q { font-family: var(--serif); font-size: clamp(1.8rem, 9vw, 2.8rem); font-weight: 800; margin: 0; color: var(--gold); }
+.clip-end-opts { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 10px 0 6px; }
+.clip-end-opts span { font-weight: 700; font-size: 1.05rem; padding: 8px 14px; border-radius: 12px; border: 2px solid var(--c); color: var(--c); }
+.clip-end-cta { margin: 6px 0 0; font-size: 0.85rem; letter-spacing: 0.06em; color: var(--muted); }
+@keyframes clipPop { from { opacity: 0; transform: scale(0.92) translateY(8px); } to { opacity: 1; transform: none; } }

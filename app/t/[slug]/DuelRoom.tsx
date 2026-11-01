@@ -85,11 +85,13 @@ export default function DuelRoom({
   initialMessages,
   left,
   right,
+  clip = false,
 }: {
   initialTopic: PublicTopic;
   initialMessages: PublicMessage[];
   left: Fighter;
   right: Fighter;
+  clip?: boolean;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const sideOf = useMemo(
@@ -331,7 +333,7 @@ export default function DuelRoom({
   const pct = Math.min(100, Math.round((topic.message_count / Math.max(1, topic.max_messages)) * 100));
 
   return (
-    <div className="duel">
+    <div className={`duel${clip ? " clip" : ""}`}>
       <header className="duel-head">
         <Link href="/" className="back" aria-label="Back to Palaver">
           ←
@@ -362,6 +364,12 @@ export default function DuelRoom({
         </div>
       </header>
 
+      {clip && (
+        <div className="clip-top" aria-hidden="true">
+          <span className="clip-brand">PALAVER</span>
+          <span className="clip-round">{ended ? "FINAL" : `ROUND ${Math.max(1, round)}/${rounds}`}</span>
+        </div>
+      )}
       <h1 className="duel-q">{topic.title}</h1>
 
       <section
@@ -427,6 +435,17 @@ export default function DuelRoom({
         )}
       </section>
 
+      {clip && ended && !speakingId && current && messages[messages.length - 1]?.id === current.id && (
+        <div className="clip-end" role="status">
+          <p className="clip-end-q">Who won?</p>
+          <div className="clip-end-opts">
+            <span style={{ "--c": left.character.color } as React.CSSProperties}>1 · {left.character.name}</span>
+            <span style={{ "--c": right.character.color } as React.CSSProperties}>2 · {right.character.name}</span>
+          </div>
+          <p className="clip-end-cta">Comment 1 or 2 · Follow for the next round</p>
+        </div>
+      )}
+
       <div className="duel-controls">
         {voiceOk ? (
           <button className={`voice-btn${voiceOn ? " on" : ""}`} onClick={toggleVoice}>
@@ -442,6 +461,9 @@ export default function DuelRoom({
             ▶ Play the whole debate
           </button>
         )}
+        <Link className="voice-btn ghost" href={clip ? `/t/${topic.slug}` : `/t/${topic.slug}?clip=1`}>
+          {clip ? "✕ Exit clip mode" : "🎬 Clip mode (for TikTok)"}
+        </Link>
       </div>
       {voiceOk && <p className="voice-note">Voices come from your own device, so they may sound different on each phone.</p>}
 

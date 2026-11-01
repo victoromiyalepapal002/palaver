@@ -32,8 +32,15 @@ export async function generateMetadata({
   };
 }
 
-export default async function TopicPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function TopicPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ clip?: string }>;
+}) {
   const { slug } = await params;
+  const { clip } = await searchParams;
   const { supabase, topic } = await loadTopic(slug);
   if (!topic) notFound();
 
@@ -70,6 +77,7 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
           initialMessages={(messages ?? []) as PublicMessage[]}
           left={left}
           right={right}
+          clip={clip === "1"}
         />
       );
     }

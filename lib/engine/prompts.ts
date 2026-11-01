@@ -129,6 +129,7 @@ export function buildDuelSystemPrompt(
     "",
     "Rules:",
     "- Speak 2 to 4 sentences, about 55 to 80 words. Finish your thought completely. It must sound natural when spoken aloud.",
+    "- Make your first sentence the sharpest: a direct rebuttal or a surprising fact, never a lead-in like 'Well' or 'Look'.",
     "- Rebut your opponent's last point directly and precisely, then advance your own case with a fact, example, or consequence they have not addressed.",
     "- Never repeat a point that was already made. Never simply agree, but concede a fair point briefly when it is true.",
     "- NO emojis, NO hashtags, NO asterisks, NO stage directions, NO quotation marks. Plain spoken words only.",
@@ -152,11 +153,11 @@ export function buildDuelUserPrompt(i: {
 
   if (i.mode === "open") {
     parts.push(
-      `Write ${i.speakerName}'s opening statement: state your side clearly in 2 to 3 sentences, give your single strongest reason with a concrete fact or example, and challenge ${i.rivalName} to answer it.`
+      `Write ${i.speakerName}'s opening statement: start IMMEDIATELY with your boldest, most arguable claim (no greeting, no introduction, no 'welcome'). Then give your single strongest reason with a concrete fact or example in 1 to 2 more sentences, and end by challenging ${i.rivalName} with a pointed question they must answer. The first sentence must hook a stranger scrolling past.`
     );
   } else if (i.mode === "close") {
     parts.push(
-      `Write ${i.speakerName}'s closing statement: make your final, strongest point in 3 to 4 sentences, address the best argument ${i.rivalName} made and why it still fails, and close with a memorable, serious line.`
+      `Write ${i.speakerName}'s closing statement: make your final, strongest point in 3 to 4 sentences, address the best argument ${i.rivalName} made and why it still fails, and end with one short, memorable line that leaves the audience still thinking. Do NOT declare a winner and do NOT thank the audience.`
     );
   } else {
     parts.push(
