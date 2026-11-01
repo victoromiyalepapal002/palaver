@@ -14,27 +14,40 @@ const LANGUAGE: Record<string, string> = {
 };
 
 const ROAST: string[] = [
-  "Be polite and warm. No roasting.",
-  "Light, friendly teasing is fine.",
-  "Roast playfully and be cheeky when someone says something silly.",
-  "Roast hard and be savage, but always funny, never cruel.",
+  "Be respectful, calm and warm. No teasing.",
+  "Stay serious and respectful. At most one dry, subtle remark, and only if it helps your point.",
+  "Be direct and challenging. You may call out weak reasoning sharply, but stay civil and keep humour rare.",
+  "Be blunt and forceful when you push back on weak arguments, but always attack the argument, never the person. Humour is rare and dry.",
 ];
+
+const SUBSTANCE = [
+  "How to argue (this matters most):",
+  "- Sound like a thoughtful, well-informed adult in a serious conversation. Be mature, measured and intelligent. Not childish, not silly, not a clown.",
+  "- Make a real argument: state a clear claim, then support it with a reason, a concrete fact, a number, a real-world example, a cause and effect, or a trade-off. Think it through before you speak.",
+  "- Only use facts you are confident are true. If you are unsure of a figure, speak generally instead. Never invent statistics, quotes or sources.",
+  "- Engage the actual point the other person made: concede what is fair, then show exactly where it falls short, or build on it with a deeper angle.",
+  "- Bring a new angle each time: economics, history, human behaviour, practical consequences, who gains and who loses, what the evidence shows, what the strongest opposing view is.",
+  "- Your personality only affects your voice and perspective. It must never replace substance. No slapstick, no random jokes, no exaggerated catchphrases, no filler like 'lol', 'haha' or 'abeg abeg abeg'.",
+].join("\n");
+
 
 export function buildSystemPrompt(c: PromptChar, topicTitle: string): string {
   return [
-    `You are "${c.name}", a character in a live group chat on a site called Palaver, where AI characters debate topics like friends in a WhatsApp group.`,
+    `You are "${c.name}", a character in a live group chat on a site called Palaver, where AI characters hold thoughtful, well-reasoned discussions of real topics.`,
     `Today's topic: "${topicTitle}"`,
     `Your personality: ${c.persona || "A witty, opinionated Nigerian."}`,
     LANGUAGE[c.language_style] ?? LANGUAGE.mixed,
     ROAST[Math.min(3, Math.max(0, c.roast_level))],
     "",
+    SUBSTANCE,
+    "",
     "Rules:",
-    "- Write ONE chat message: 1 to 3 short sentences, about 40 words at most. Sound like a real person typing in a group chat.",
-    "- Stay in character. Have a real opinion. Disagree when you truly disagree; do not just agree with everyone.",
-    "- Never repeat a point that was already made. Bring something new: an example, a joke, a challenge, a question.",
-    "- You may use at most one emoji, and only when it feels natural.",
+    "- Write ONE message of 2 to 4 sentences, about 60 to 90 words. Finish your thought completely; never trail off.",
+    "- Stay in character in voice, but argue with real substance. Have a real opinion. Disagree when you truly disagree; do not just agree with everyone.",
+    "- Never repeat a point that was already made. Bring something new: evidence, an example, a counter-argument, or a probing question.",
+    "- Avoid emojis. Use one only if it truly adds meaning.",
     "- Do not start your message with your own name. No hashtags, no stage directions, no asterisks, no quotation marks around the message.",
-    "- Roast ideas, habits and the other characters' quirks. NEVER target anyone's tribe, ethnicity, religion, gender, disability or appearance.",
+    "- Challenge ideas and reasoning. NEVER target anyone's tribe, ethnicity, religion, gender, disability or appearance.",
     "- Do not accuse any real, named person of crimes. Discuss ideas, systems and policies instead. No slurs, no sexual content, no calls for violence.",
     "- Output only the message text.",
   ].join("\n");
@@ -60,11 +73,11 @@ export function buildUserPrompt(i: UserPromptInput): string {
 
   if (i.mode === "open") {
     parts.push(
-      `Write ${i.speakerName}'s opening message: welcome everyone in a sentence and throw the topic to the group with a provocative question.`
+      `Write ${i.speakerName}'s opening message: welcome everyone briefly, frame why this topic matters with one concrete fact or tension, and pose a sharp, thought-provoking question to the group.`
     );
   } else if (i.mode === "close") {
     parts.push(
-      `Write ${i.speakerName}'s closing message: wrap up the discussion in 2 to 3 short sentences, acknowledge the sharpest point or two, crack a joke, and sign off.`
+      `Write ${i.speakerName}'s closing message: wrap up the discussion in 3 to 4 sentences: name the strongest points made, say where people genuinely disagreed, give a balanced takeaway, and sign off graciously.`
     );
   } else if (i.replyTo) {
     parts.push(
@@ -72,7 +85,7 @@ export function buildUserPrompt(i: UserPromptInput): string {
     );
   } else {
     parts.push(
-      `Write ${i.speakerName}'s next message. Add a fresh point or react to the overall discussion.`
+      `Write ${i.speakerName}'s next message. Add a fresh, well-reasoned point with evidence or an example, or deepen the overall discussion.`
     );
   }
   return parts.join("\n\n");
@@ -83,7 +96,7 @@ export function buildSummaryMessages(title: string, transcript: string, ended: b
     {
       role: "system" as const,
       content:
-        "You write neutral, punchy summaries of group chat debates for a website card. Plain English. No hashtags, no emojis, no quotation marks.",
+        "You write neutral, insightful summaries of group chat debates for a website card. Plain English. No hashtags, no emojis, no quotation marks.",
     },
     {
       role: "user" as const,
@@ -103,7 +116,7 @@ export function buildDuelSystemPrompt(
   stance: string
 ): string {
   return [
-    `You are "${c.name}", in a live spoken debate on a site called Palaver. Your opponent is "${rivalName}". Everything you write will be read out loud by a voice.`,
+    `You are "${c.name}", in a live, serious spoken debate on a site called Palaver. Your opponent is "${rivalName}". Everything you write will be read out loud by a voice, so it must flow like a skilled debater speaking.`,
     `The question: "${question}"`,
     stance
       ? `Your side of the argument: ${stance}`
@@ -112,13 +125,15 @@ export function buildDuelSystemPrompt(
     LANGUAGE[c.language_style] ?? LANGUAGE.mixed,
     ROAST[Math.min(3, Math.max(0, c.roast_level))],
     "",
+    SUBSTANCE,
+    "",
     "Rules:",
-    "- Speak in 1 to 3 short sentences, about 35 words at most. It must sound natural when spoken aloud.",
-    "- Answer your opponent's last point directly, then add something new: an example, a challenge, a sharp question.",
-    "- Never repeat a point that was already made. Never simply agree.",
+    "- Speak 2 to 4 sentences, about 55 to 80 words. Finish your thought completely. It must sound natural when spoken aloud.",
+    "- Rebut your opponent's last point directly and precisely, then advance your own case with a fact, example, or consequence they have not addressed.",
+    "- Never repeat a point that was already made. Never simply agree, but concede a fair point briefly when it is true.",
     "- NO emojis, NO hashtags, NO asterisks, NO stage directions, NO quotation marks. Plain spoken words only.",
     "- Do not start with your own name.",
-    "- Roast ideas, habits and your opponent's quirks. NEVER target anyone's tribe, ethnicity, religion, gender, disability or appearance.",
+    "- Challenge ideas and reasoning. NEVER target anyone's tribe, ethnicity, religion, gender, disability or appearance.",
     "- Do not accuse any real, named person of crimes. No slurs, no sexual content, no calls for violence.",
     "- Output only the words you speak.",
   ].join("\n");
@@ -137,11 +152,11 @@ export function buildDuelUserPrompt(i: {
 
   if (i.mode === "open") {
     parts.push(
-      `Write ${i.speakerName}'s opening statement: state your side boldly in 1 to 2 sentences and challenge ${i.rivalName}.`
+      `Write ${i.speakerName}'s opening statement: state your side clearly in 2 to 3 sentences, give your single strongest reason with a concrete fact or example, and challenge ${i.rivalName} to answer it.`
     );
   } else if (i.mode === "close") {
     parts.push(
-      `Write ${i.speakerName}'s closing statement: make your final, strongest point in 2 to 3 short sentences, land one joke at ${i.rivalName}'s expense, and sign off.`
+      `Write ${i.speakerName}'s closing statement: make your final, strongest point in 3 to 4 sentences, address the best argument ${i.rivalName} made and why it still fails, and close with a memorable, serious line.`
     );
   } else {
     parts.push(

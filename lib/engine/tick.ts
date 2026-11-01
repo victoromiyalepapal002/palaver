@@ -52,10 +52,10 @@ function cleanText(raw: string, speakerName: string): string {
     ""
   );
   t = t.replace(/^["“”]+|["“”]+$/g, "").replace(/\*\*/g, "").trim();
-  if (t.length > 320) {
-    const cut = t.slice(0, 320);
+  if (t.length > 600) {
+    const cut = t.slice(0, 600);
     const end = Math.max(cut.lastIndexOf("."), cut.lastIndexOf("!"), cut.lastIndexOf("?"));
-    t = end > 100 ? cut.slice(0, end + 1) : cut.trimEnd() + "…";
+    t = end > 200 ? cut.slice(0, end + 1) : cut.trimEnd() + "…";
   }
   return t;
 }
@@ -177,8 +177,8 @@ async function postNextMessage(db: DB, topic: TopicRow, blocked: string[]): Prom
     .join("\n");
 
   const res = await generateText({
-    maxTokens: 140,
-    temperature: 0.95,
+    maxTokens: 260,
+    temperature: 0.7,
     messages: [
       { role: "system", content: buildSystemPrompt(speaker, topic.title) },
       {
@@ -319,8 +319,8 @@ async function postDuelMessage(db: DB, topic: TopicRow, blocked: string[]): Prom
   const transcript = recent.map((m) => `${nameOf.get(m.character_id) ?? "Someone"}: ${m.body}`).join("\n");
 
   const res = await generateText({
-    maxTokens: 140,
-    temperature: 0.95,
+    maxTokens: 260,
+    temperature: 0.7,
     messages: [
       { role: "system", content: buildDuelSystemPrompt(speaker, rival.name, topic.title, stance) },
       {
