@@ -658,3 +658,13 @@ button { white-space: nowrap; }
 .clip-end-opts span { font-weight: 700; font-size: 1.05rem; padding: 8px 14px; border-radius: 12px; border: 2px solid var(--c); color: var(--c); }
 .clip-end-cta { margin: 6px 0 0; font-size: 0.85rem; letter-spacing: 0.06em; color: var(--muted); }
 @keyframes clipPop { from { opacity: 0; transform: scale(0.92) translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Winner ---------- */
+.crown { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.16em; color: #121110; background: linear-gradient(90deg, #c9a227, #f6dd86); padding: 3px 10px; border-radius: 999px; margin-top: 6px; animation: clipPop 0.5s ease-out both; }
+.fighter.is-winner .orb { box-shadow: 0 0 0 3px #f6dd86, 0 0 34px color-mix(in srgb, #f6dd86 55%, transparent); }
+.verdict { margin: 10px 14px 0; padding: 14px 16px; text-align: center; border: 1.5px solid var(--c); border-radius: 16px; background: color-mix(in srgb, var(--c) 10%, var(--bg)); animation: clipPop 0.5s ease-out both; }
+.verdict-label { margin: 0; font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); font-weight: 700; }
+.verdict-name { margin: 4px 0 0; font-family: var(--serif); font-weight: 800; font-size: clamp(1.6rem, 7vw, 2.4rem); color: var(--c); line-height: 1.1; }
+.verdict-why { margin: 8px 0 0; font-size: 0.95rem; line-height: 1.4; color: #ddd5c6; text-wrap: balance; }
+.verdict-cta { margin: 8px 0 0; font-size: 0.8rem; color: var(--muted); letter-spacing: 0.03em; }
+.verdict.in-clip .verdict-why { font-size: clamp(1rem, 4.4vw, 1.3rem); }

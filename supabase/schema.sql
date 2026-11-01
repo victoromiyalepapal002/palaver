@@ -188,3 +188,7 @@ alter table topic_agents add column if not exists side text;
 alter table topic_agents drop constraint if exists topic_agents_side_check;
 alter table topic_agents add constraint topic_agents_side_check check (side is null or side in ('left','right'));
 alter table topic_agents add column if not exists stance text not null default '';
+
+-- Duel winner (also in migration-winner.sql)
+alter table topics add column if not exists winner_id uuid references characters(id) on delete set null;
+alter table topics add column if not exists verdict text not null default '';

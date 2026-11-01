@@ -39,17 +39,19 @@ function FighterView({
   side,
   speaking,
   thinking,
+  winner = false,
 }: {
   fighter: Fighter;
   side: Side;
   speaking: boolean;
   thinking: boolean;
+  winner?: boolean;
 }) {
   const c = fighter.character;
   const isUrl = /^https?:\/\//.test(c.avatar);
   return (
     <div
-      className={`fighter ${side}${speaking ? " is-speaking" : ""}${thinking ? " is-thinking" : ""}`}
+      className={`fighter ${side}${speaking ? " is-speaking" : ""}${thinking ? " is-thinking" : ""}${winner ? " is-winner" : ""}`}
       style={{ "--c": c.color } as React.CSSProperties}
     >
       <div className="orb-stage">
@@ -73,6 +75,7 @@ function FighterView({
         <i />
         <i />
       </div>
+      {winner && <div className="crown" aria-label="Winner">🏆 WINNER</div>}
       <div className="f-name">{c.name}</div>
       <div className="f-tag">{fighter.stance || c.tagline}</div>
       <div className="f-status">{speaking ? "speaking" : thinking ? "thinking…" : "listening"}</div>
@@ -328,6 +331,9 @@ export default function DuelRoom({
   const currentFighter = current ? fighterOf(current.character_id) : null;
   const currentSide: Side = current ? sideOf.get(current.character_id) ?? "left" : "left";
   const thinkingFighter = typingId ? fighterOf(typingId) : null;
+  const lastSpoken = !!current && messages[messages.length - 1]?.id === current.id && !speakingId;
+  const winnerFighter = topic.winner_id ? fighterOf(topic.winner_id) : null;
+  const showVerdict = ended && lastSpoken && !!winnerFighter;
   const rounds = Math.max(1, Math.ceil(topic.max_messages / 2));
   const round = Math.min(rounds, Math.ceil(topic.message_count / 2));
   const pct = Math.min(100, Math.round((topic.message_count / Math.max(1, topic.max_messages)) * 100));
@@ -387,6 +393,7 @@ export default function DuelRoom({
             fighter={left}
             side="left"
             speaking={speakingId === left.character.id}
+            winner={showVerdict && topic.winner_id === left.character.id}
             thinking={typingId === left.character.id && speakingId !== left.character.id}
           />
           <div className="vs" aria-hidden="true">
@@ -398,6 +405,7 @@ export default function DuelRoom({
             fighter={right}
             side="right"
             speaking={speakingId === right.character.id}
+            winner={showVerdict && topic.winner_id === right.character.id}
             thinking={typingId === right.character.id && speakingId !== right.character.id}
           />
         </div>
@@ -435,7 +443,19 @@ export default function DuelRoom({
         )}
       </section>
 
-      {clip && ended && !speakingId && current && messages[messages.length - 1]?.id === current.id && (
+      {showVerdict && winnerFighter && (
+        <div
+          className={`verdict${clip ? " in-clip" : ""}`}
+          role="status"
+          style={{ "--c": winnerFighter.character.color } as React.CSSProperties}
+        >
+          <p className="verdict-label">🏆 The winner</p>
+          <p className="verdict-name">{winnerFighter.character.name}</p>
+          {topic.verdict && <p className="verdict-why">{topic.verdict}</p>}
+          <p className="verdict-cta">Do you agree? Comment 1 for {left.character.name} or 2 for {right.character.name}</p>
+        </div>
+      )}
+      {clip && ended && lastSpoken && !winnerFighter && (
         <div className="clip-end" role="status">
           <p className="clip-end-q">Who won?</p>
           <div className="clip-end-opts">

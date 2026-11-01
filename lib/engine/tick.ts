@@ -259,6 +259,54 @@ async function postNextMessage(db: DB, topic: TopicRow, blocked: string[]): Prom
 }
 
 /** A duel: two characters, strictly taking turns, left side opens, right side has the last word. */
+/** After a duel ends, an impartial judge reads the whole debate and picks a winner with a short reason. */
+async function judgeDuel(
+  db: DB,
+  topic: TopicRow,
+  left: { id: string; name: string },
+  right: { id: string; name: string }
+) {
+  const { data: msgs } = await db
+    .from("messages")
+    .select("character_id, body")
+    .eq("topic_id", topic.id)
+    .order("created_at", { ascending: true })
+    .limit(60);
+  if (!msgs || msgs.length < 2) return;
+  const nameOf = new Map<string, string>([
+    [left.id, left.name],
+    [right.id, right.name],
+  ]);
+  const transcript = (msgs as { character_id: string; body: string }[])
+    .map((m) => `${nameOf.get(m.character_id) ?? "Someone"}: ${m.body}`)
+    .join("\n");
+
+  const res = await generateText({
+    maxTokens: 160,
+    temperature: 0.3,
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are a fair, impartial debate judge. Judge only the quality of the arguments: clarity, evidence and examples, how well each side answered the other, and consistency. Ignore personality, humour and which side you personally prefer. You must pick exactly one winner, no ties.",
+      },
+      {
+        role: "user",
+        content: `Question: "${topic.title}"\n\nSide 1: ${left.name}\nSide 2: ${right.name}\n\nDebate:\n${transcript}\n\nReply in exactly this format:\nWINNER: 1 or 2\nVERDICT: one or two sentences (max 40 words) explaining the deciding factor. Use the debaters' names. No quotation marks.`,
+      },
+    ],
+  });
+  if (!res.ok) return;
+  const out = res.text.replace(/<think>[\s\S]*?<\/think>/gi, "");
+  const w = /WINNER:\s*\**\s*([12])/i.exec(out)?.[1];
+  const verdict = (/VERDICT:\s*([\s\S]+)/i.exec(out)?.[1] ?? "").replace(/\s+/g, " ").replace(/["“”]/g, "").trim().slice(0, 300);
+  if (!w) return;
+  await db
+    .from("topics")
+    .update({ winner_id: w === "1" ? left.id : right.id, verdict })
+    .eq("id", topic.id);
+}
+
 async function postDuelMessage(db: DB, topic: TopicRow, blocked: string[]): Promise<string> {
   const { data: links } = await db
     .from("topic_agents")
@@ -384,6 +432,7 @@ async function postDuelMessage(db: DB, topic: TopicRow, blocked: string[]): Prom
   if (finished || newCount % 10 === 0) {
     await summarizeTopic(db, topic.id, topic.title, finished);
   }
+  if (finished) await judgeDuel(db, topic, left, right);
   return "posted";
 }
 

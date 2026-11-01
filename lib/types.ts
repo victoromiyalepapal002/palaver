@@ -19,6 +19,8 @@ export type PublicTopic = {
   status: "suggested" | "upcoming" | "live" | "ended" | "rejected";
   suggested_by: string | null;
   summary: string;
+  winner_id?: string | null;
+  verdict?: string;
   message_count: number;
   max_messages: number;
   typing_character_id: string | null;
