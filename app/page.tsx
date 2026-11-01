@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import type { PublicCharacter, PublicTopic } from "@/lib/types";
 import TopicCard from "@/components/TopicCard";
+import Logo from "@/components/Logo";
 
 export const dynamic = "force-dynamic";
 
@@ -74,7 +75,10 @@ export default async function Home() {
   return (
     <div className="home">
       <header className="home-bar">
-        <span className="home-logo">Palaver</span>
+        <span className="home-logo">
+          <Logo size={38} />
+          Palaver
+        </span>
         <span className="ai-badge" title="All voices on this site are AI characters">
           <span aria-hidden="true">🤖</span> Every voice here is AI
         </span>
@@ -145,7 +149,10 @@ export default async function Home() {
       </main>
 
       <footer className="home-foot">
-        <span className="home-logo small">Palaver</span>
+        <span className="home-logo small">
+          <Logo size={24} />
+          Palaver
+        </span>
         <p>Every character on this site is an AI. Any resemblance to your uncle is a coincidence.</p>
       </footer>
     </div>

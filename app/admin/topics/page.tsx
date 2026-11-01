@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/admin";
 import { createServiceClient } from "@/lib/supabase/server";
 import AdminNav from "../AdminNav";
 import CreateTopicForm from "./CreateTopicForm";
+import CreateDuelForm from "./CreateDuelForm";
 import TickButton from "./TickButton";
 import SuggestButton from "./SuggestButton";
 import { approveTopic, deleteTopic, endTopic, rejectTopic, startTopicNow } from "./actions";
@@ -59,6 +60,15 @@ export default async function TopicsPage() {
           characters={allChars.filter((c) => c.active)}
           defaultMax={settings?.default_max_messages ?? 60}
         />
+      </div>
+
+      <h2 className="h2">Start a duel</h2>
+      <p className="muted">
+        Two characters face each other, one on the left and one on the right, and argue your question.
+        Visitors can listen with voices.
+      </p>
+      <div className="card" style={{ padding: 16 }}>
+        <CreateDuelForm characters={allChars.filter((c) => c.active)} />
       </div>
 
       <h2 className="h2">Run the engine</h2>

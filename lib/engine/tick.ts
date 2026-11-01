@@ -1,6 +1,12 @@
 import { createServiceClient } from "@/lib/supabase/server";
 import { generateText } from "@/lib/ai/generate";
-import { buildSummaryMessages, buildSystemPrompt, buildUserPrompt } from "./prompts";
+import {
+  buildDuelSystemPrompt,
+  buildDuelUserPrompt,
+  buildSummaryMessages,
+  buildSystemPrompt,
+  buildUserPrompt,
+} from "./prompts";
 import { activateUpcoming } from "./topics";
 import { suggestTopics } from "./suggest";
 
@@ -19,6 +25,7 @@ type Msg = { id: string; character_id: string; body: string; reactions: string[]
 type TopicRow = {
   id: string;
   title: string;
+  kind: string;
   message_count: number;
   max_messages: number;
 };
@@ -251,6 +258,135 @@ async function postNextMessage(db: DB, topic: TopicRow, blocked: string[]): Prom
   return "posted";
 }
 
+/** A duel: two characters, strictly taking turns, left side opens, right side has the last word. */
+async function postDuelMessage(db: DB, topic: TopicRow, blocked: string[]): Promise<string> {
+  const { data: links } = await db
+    .from("topic_agents")
+    .select("character_id, side, stance")
+    .eq("topic_id", topic.id);
+  const rows = (links ?? []) as { character_id: string; side: string | null; stance: string }[];
+  const leftRow = rows.find((r) => r.side === "left");
+  const rightRow = rows.find((r) => r.side === "right");
+  if (!leftRow || !rightRow) return "skipped: a duel needs a left and a right character";
+
+  const { data: charRows } = await db
+    .from("characters")
+    .select("*")
+    .in("id", [leftRow.character_id, rightRow.character_id]);
+  const chars = (charRows ?? []) as Char[];
+  const left = chars.find((c) => c.id === leftRow.character_id);
+  const right = chars.find((c) => c.id === rightRow.character_id);
+  if (!left || !right) return "skipped: a duel character was deleted";
+
+  const count = topic.message_count;
+  const leftTurn = count % 2 === 0;
+  const speaker = leftTurn ? left : right;
+  const rival = leftTurn ? right : left;
+  const stance = (leftTurn ? leftRow.stance : rightRow.stance) ?? "";
+  const mode: "open" | "normal" | "close" =
+    count === 0 ? "open" : count >= topic.max_messages - 1 ? "close" : "normal";
+
+  const { data: recentDesc } = await db
+    .from("messages")
+    .select("id, character_id, body, reactions, created_at")
+    .eq("topic_id", topic.id)
+    .order("created_at", { ascending: false })
+    .limit(10);
+  const recent = ((recentDesc ?? []) as Msg[]).slice().reverse();
+  const lastMsg = recent[recent.length - 1];
+
+  const startedAt = Date.now();
+  const { data: claimed } = await db
+    .from("topics")
+    .update({
+      typing_character_id: speaker.id,
+      typing_until: new Date(startedAt + 45_000).toISOString(),
+    })
+    .eq("id", topic.id)
+    .eq("status", "live")
+    .eq("message_count", count)
+    .or(`typing_until.is.null,typing_until.lt.${new Date(startedAt).toISOString()}`)
+    .select("id");
+  if (!claimed || claimed.length === 0) return "skipped: another tick is working on this duel";
+
+  const release = () =>
+    db.from("topics").update({ typing_character_id: null, typing_until: null }).eq("id", topic.id);
+
+  const nameOf = new Map<string, string>([
+    [left.id, left.name],
+    [right.id, right.name],
+  ]);
+  const transcript = recent.map((m) => `${nameOf.get(m.character_id) ?? "Someone"}: ${m.body}`).join("\n");
+
+  const res = await generateText({
+    maxTokens: 140,
+    temperature: 0.95,
+    messages: [
+      { role: "system", content: buildDuelSystemPrompt(speaker, rival.name, topic.title, stance) },
+      {
+        role: "user",
+        content: buildDuelUserPrompt({
+          transcript,
+          speakerName: speaker.name,
+          rivalName: rival.name,
+          mode,
+          rivalLast: lastMsg && lastMsg.character_id === rival.id ? lastMsg.body : null,
+        }),
+      },
+    ],
+  });
+  if (!res.ok) {
+    await release();
+    return `skipped: ${res.reason} (${res.detail.slice(0, 160)})`;
+  }
+
+  // Spoken text: no emojis or leftover markup.
+  const text = cleanText(res.text, speaker.name)
+    .replace(/\p{Extended_Pictographic}/gu, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  if (!text) {
+    await release();
+    return "skipped: empty reply";
+  }
+  const lower = text.toLowerCase();
+  if (blocked.some((w) => w && lower.includes(w))) {
+    await release();
+    return "skipped: message contained a blocked word";
+  }
+
+  const typingMs = Math.min(6000, Math.max(1800, text.length * 40));
+  await sleep(Math.max(0, typingMs - (Date.now() - startedAt)));
+
+  const { error: insertError } = await db.from("messages").insert({
+    topic_id: topic.id,
+    character_id: speaker.id,
+    body: text,
+    reply_to: lastMsg?.id ?? null,
+  });
+  if (insertError) {
+    await release();
+    return `error: ${insertError.message}`;
+  }
+
+  const newCount = count + 1;
+  const finished = newCount >= topic.max_messages;
+  await db
+    .from("topics")
+    .update({
+      message_count: newCount,
+      typing_character_id: null,
+      typing_until: null,
+      ...(finished ? { status: "ended", ended_at: new Date().toISOString() } : {}),
+    })
+    .eq("id", topic.id);
+
+  if (finished || newCount % 10 === 0) {
+    await summarizeTopic(db, topic.id, topic.title, finished);
+  }
+  return "posted";
+}
+
 /** Once a day (when the queue is short) asks the characters for new topic ideas. */
 async function maybeDailySuggestions(db: DB, notes: string[]) {
   const { data: last } = await db
@@ -286,12 +422,11 @@ export async function runTick(): Promise<{ posted: number; notes: string[] }> {
   const started = await activateUpcoming(db, settings?.max_live_topics ?? 2);
   if (started > 0) notes.push(`Started ${started} queued topic(s)`);
 
-  const gapMs = Math.max(20, settings?.seconds_between_messages ?? 90) * 1000;
   const blocked: string[] = (settings?.blocked_words ?? []).map((w: string) => w.toLowerCase());
 
   const { data: topics } = await db
     .from("topics")
-    .select("id, title, message_count, max_messages")
+    .select("id, title, kind, message_count, max_messages")
     .eq("status", "live")
     .order("started_at", { ascending: true })
     .limit(20);
@@ -300,29 +435,50 @@ export async function runTick(): Promise<{ posted: number; notes: string[] }> {
   if (!topics || topics.length === 0) {
     notes.push("No live topics");
   } else {
-    for (const t of topics as TopicRow[]) {
-      if (posted >= 3) break; // keep each run well inside the function time limit
+    // Fast mode: keep going inside this run, taking turns between live topics, so chats feel live.
+    // Each line takes a few seconds (typing time), then the next one starts. The next cron run
+    // continues where this one stopped.
+    const BURST_MS = 38_000; // do not start another line after this; one line takes up to ~12s
+    const all = topics as TopicRow[];
+    // Duels first: they are the ones people are watching and listening to in real time.
+    let active = [...all.filter((t) => t.kind === "duel"), ...all.filter((t) => t.kind !== "duel")];
+    const perTopic = new Map<string, number>();
 
-      const { data: last } = await db
-        .from("messages")
-        .select("created_at")
-        .eq("topic_id", t.id)
-        .order("created_at", { ascending: false })
-        .limit(1);
-      const lastAt = last?.[0]?.created_at ? new Date(last[0].created_at).getTime() : 0;
-      if (Date.now() - lastAt < gapMs - 10_000) {
-        notes.push(`${t.title}: waiting for the next turn`);
-        continue;
-      }
+    while (active.length > 0 && Date.now() - t0 < BURST_MS) {
+      const next: TopicRow[] = [];
+      for (const t of active) {
+        if (Date.now() - t0 >= BURST_MS) {
+          next.push(t);
+          continue;
+        }
+        let result: string;
+        try {
+          result =
+            t.kind === "duel"
+              ? await postDuelMessage(db, t, blocked)
+              : await postNextMessage(db, t, blocked);
+        } catch (e) {
+          notes.push(`${t.title}: error ${e instanceof Error ? e.message : String(e)}`);
+          continue; // drop it for this run
+        }
+        if (result !== "posted") {
+          if (!result.startsWith("skipped: another tick")) notes.push(`${t.title}: ${result}`);
+          continue; // drop it for this run
+        }
+        posted++;
+        perTopic.set(t.title, (perTopic.get(t.title) ?? 0) + 1);
 
-      try {
-        const result = await postNextMessage(db, t, blocked);
-        notes.push(`${t.title}: ${result}`);
-        if (result === "posted") posted++;
-      } catch (e) {
-        notes.push(`${t.title}: error ${e instanceof Error ? e.message : String(e)}`);
+        const { data: fresh } = await db
+          .from("topics")
+          .select("id, title, kind, status, message_count, max_messages")
+          .eq("id", t.id)
+          .single();
+        if (fresh && fresh.status === "live") next.push(fresh as TopicRow);
       }
+      active = next;
+      if (active.length > 0) await sleep(2000);
     }
+    for (const [title, n] of perTopic) notes.push(`${title}: ${n} line(s) this run`);
   }
 
   // Only if there is time left in this run.

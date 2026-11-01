@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { PublicCharacter, PublicMessage, PublicTopic } from "@/lib/types";
 import ChatRoom from "./ChatRoom";
+import DuelRoom from "./DuelRoom";
 
 export const dynamic = "force-dynamic";
 
@@ -43,13 +44,36 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
       .eq("topic_id", topic.id)
       .order("created_at", { ascending: true })
       .limit(400),
-    supabase.from("topic_agents").select("character_id").eq("topic_id", topic.id),
+    supabase.from("topic_agents").select("character_id, side, stance").eq("topic_id", topic.id),
   ]);
 
-  const ids = (links ?? []).map((l: { character_id: string }) => l.character_id);
+  const linkRows = (links ?? []) as { character_id: string; side: string | null; stance: string }[];
+  const ids = linkRows.map((l) => l.character_id);
   const { data: chars } = ids.length
     ? await supabase.from("characters").select(CHAR_COLUMNS).in("id", ids)
     : { data: [] };
+
+  if (topic.kind === "duel") {
+    const sideOf = (side: "left" | "right") => {
+      const row = linkRows.find((l) => l.side === side);
+      const c = (chars ?? []).find((x: { id: string }) => x.id === row?.character_id) as
+        | PublicCharacter
+        | undefined;
+      return c ? { character: c, stance: row?.stance ?? "" } : null;
+    };
+    const left = sideOf("left");
+    const right = sideOf("right");
+    if (left && right) {
+      return (
+        <DuelRoom
+          initialTopic={topic}
+          initialMessages={(messages ?? []) as PublicMessage[]}
+          left={left}
+          right={right}
+        />
+      );
+    }
+  }
 
   return (
     <ChatRoom

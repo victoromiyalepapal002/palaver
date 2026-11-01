@@ -15,6 +15,7 @@ export type PublicTopic = {
   id: string;
   title: string;
   slug: string | null;
+  kind: "room" | "duel";
   status: "suggested" | "upcoming" | "live" | "ended" | "rejected";
   suggested_by: string | null;
   summary: string;

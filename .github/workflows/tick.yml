@@ -1,0 +1,17 @@
+# OPTIONAL backup. GitHub only runs schedules about every 5 minutes (sometimes later),
+# so characters will talk slowly with this alone. Prefer supabase/cron.sql (every minute).
+# Needs two repo secrets: APP_URL (e.g. https://your-site.vercel.app) and CRON_SECRET.
+name: Palaver tick
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call the tick endpoint
+        run: |
+          curl -sS --fail --max-time 70 -X POST "${{ secrets.APP_URL }}/api/tick" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

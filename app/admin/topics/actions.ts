@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { requireAdmin } from "@/lib/admin";
 import { createServiceClient } from "@/lib/supabase/server";
 import { runTick, summarizeTopic } from "@/lib/engine/tick";
@@ -60,6 +61,74 @@ export async function createTopic(
 
   revalidatePath("/admin/topics");
   revalidatePath("/");
+  return { ok: true };
+}
+
+export async function createDuel(
+  _prev: CreateState | undefined,
+  formData: FormData
+): Promise<CreateState> {
+  await requireAdmin();
+
+  const question = String(formData.get("question") ?? "").trim();
+  if (question.length < 5 || question.length > 160) {
+    return { error: "Write the debate question (5 to 160 characters)." };
+  }
+  const leftId = String(formData.get("left") ?? "");
+  const rightId = String(formData.get("right") ?? "");
+  if (!leftId || !rightId || leftId === rightId) {
+    return { error: "Pick two different characters, one for each side." };
+  }
+  const leftStance = String(formData.get("left_stance") ?? "").trim().slice(0, 200);
+  const rightStance = String(formData.get("right_stance") ?? "").trim().slice(0, 200);
+
+  // Even number of messages so the right side always gets the last word.
+  const roundsRaw = Number(formData.get("rounds"));
+  const rounds = Number.isFinite(roundsRaw) ? Math.min(30, Math.max(3, Math.round(roundsRaw))) : 8;
+
+  const db = createServiceClient();
+  const { data: chars } = await db
+    .from("characters")
+    .select("id")
+    .eq("active", true)
+    .in("id", [leftId, rightId]);
+  if ((chars ?? []).length !== 2) return { error: "Both characters must be active." };
+
+  const { data: topic, error } = await db
+    .from("topics")
+    .insert({
+      title: question,
+      slug: slugify(question),
+      kind: "duel",
+      status: "live",
+      max_messages: rounds * 2,
+      started_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+  if (error || !topic) return { error: error?.message ?? "Could not create the duel." };
+
+  const { error: linkError } = await db.from("topic_agents").insert([
+    { topic_id: topic.id, character_id: leftId, side: "left", stance: leftStance },
+    { topic_id: topic.id, character_id: rightId, side: "right", stance: rightStance },
+  ]);
+  if (linkError) {
+    await db.from("topics").delete().eq("id", topic.id);
+    return {
+      error: `${linkError.message} (Did you run supabase/migration-duel.sql in Supabase?)`,
+    };
+  }
+
+  revalidatePath("/admin/topics");
+  revalidatePath("/");
+  // Start talking right away instead of waiting for the next minute.
+  after(async () => {
+    try {
+      await runTick();
+    } catch {
+      /* the cron will pick it up */
+    }
+  });
   return { ok: true };
 }
 

@@ -48,7 +48,10 @@ export default function TopicCard({
         ) : (
           <span className="ended-pill">{ago(topic.ended_at)}</span>
         )}
-        <ShareButton path={href} title={topic.title} />
+        <span className="tcard-actions">
+          {topic.kind === "duel" && <span className="duel-tag">⚔ DUEL · 🔊</span>}
+          <ShareButton path={href} title={topic.title} />
+        </span>
       </div>
 
       <h3 className="tcard-title">

@@ -71,6 +71,7 @@ export async function testAi(_prev: TestState, formData: FormData): Promise<Test
 
   const result = await generateText({
     ignorePause: true,
+    ignoreCooldown: true,
     maxTokens: 120,
     messages: [
       { role: "system", content: "You are a witty Nigerian chat character. Reply in one or two short sentences." },

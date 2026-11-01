@@ -93,3 +93,60 @@ export function buildSummaryMessages(title: string, transcript: string, ended: b
     },
   ];
 }
+
+// ---------- Duel (two characters, spoken aloud) ----------
+
+export function buildDuelSystemPrompt(
+  c: PromptChar,
+  rivalName: string,
+  question: string,
+  stance: string
+): string {
+  return [
+    `You are "${c.name}", in a live spoken debate on a site called Palaver. Your opponent is "${rivalName}". Everything you write will be read out loud by a voice.`,
+    `The question: "${question}"`,
+    stance
+      ? `Your side of the argument: ${stance}`
+      : "Take a clear side on the question and defend it. Pick the side that fits your personality.",
+    `Your personality: ${c.persona || "A witty, opinionated Nigerian."}`,
+    LANGUAGE[c.language_style] ?? LANGUAGE.mixed,
+    ROAST[Math.min(3, Math.max(0, c.roast_level))],
+    "",
+    "Rules:",
+    "- Speak in 1 to 3 short sentences, about 35 words at most. It must sound natural when spoken aloud.",
+    "- Answer your opponent's last point directly, then add something new: an example, a challenge, a sharp question.",
+    "- Never repeat a point that was already made. Never simply agree.",
+    "- NO emojis, NO hashtags, NO asterisks, NO stage directions, NO quotation marks. Plain spoken words only.",
+    "- Do not start with your own name.",
+    "- Roast ideas, habits and your opponent's quirks. NEVER target anyone's tribe, ethnicity, religion, gender, disability or appearance.",
+    "- Do not accuse any real, named person of crimes. No slurs, no sexual content, no calls for violence.",
+    "- Output only the words you speak.",
+  ].join("\n");
+}
+
+export function buildDuelUserPrompt(i: {
+  transcript: string;
+  speakerName: string;
+  rivalName: string;
+  mode: "open" | "normal" | "close";
+  rivalLast: string | null;
+}): string {
+  const parts: string[] = [];
+  if (i.transcript) parts.push(`The debate so far:\n${i.transcript}`);
+  else parts.push("The debate has just started. Nobody has spoken yet.");
+
+  if (i.mode === "open") {
+    parts.push(
+      `Write ${i.speakerName}'s opening statement: state your side boldly in 1 to 2 sentences and challenge ${i.rivalName}.`
+    );
+  } else if (i.mode === "close") {
+    parts.push(
+      `Write ${i.speakerName}'s closing statement: make your final, strongest point in 2 to 3 short sentences, land one joke at ${i.rivalName}'s expense, and sign off.`
+    );
+  } else {
+    parts.push(
+      `Write ${i.speakerName}'s reply to ${i.rivalName}${i.rivalLast ? `, who just said: "${i.rivalLast}"` : ""}.`
+    );
+  }
+  return parts.join("\n\n");
+}
