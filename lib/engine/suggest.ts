@@ -56,7 +56,7 @@ export async function suggestTopics(
         },
         {
           role: "user",
-          content: `Theme: ${theme}.\n\nTopics already used (do not repeat or closely copy):\n${avoid || "(none yet)"}\n\nPropose ONE fresh, specific, debate-worthy topic as a short question or bold statement, maximum 90 characters. Do not name real people. Nothing hateful. No quotation marks, no numbering, no explanation. Output only the topic.`,
+          content: `Theme: ${theme}.\n\nTopics already used (do not repeat or closely copy):\n${avoid || "(none yet)"}\n\nPropose ONE fresh debate topic that splits people roughly 50/50 and that everyone has a gut opinion on. It must be a short question with two clearly opposite sides, rooted in everyday life, money, relationships, work, family, technology or tradition, and phrased so a stranger can pick a side in two seconds. Style examples: "Should a man pay on the first date?", "Is japa the smartest move or just running away?". Avoid dry policy or technical topics, and avoid questions with an obvious right answer. Maximum 90 characters. Do not name real people. Nothing hateful, no attacks on any tribe, religion or gender. No quotation marks, no numbering, no explanation. Output only the topic.`,
         },
       ],
     });
